@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 // A WebhookTLS specifies the path to a key and a cert so the poller can open
@@ -39,7 +41,6 @@ type WebhookEndpoint struct {
 // add the Webhook to a http-mux.
 //
 // If you want to ignore the automatic setWebhook call, you can set IgnoreSetWebhook to true.
-//
 type Webhook struct {
 	Listen           string   `json:"url"`
 	MaxConnections   int      `json:"max_connections"`
@@ -139,8 +140,12 @@ func (h *Webhook) Poll(b *Bot, dest chan Update, stop chan struct{}) {
 		return
 	}
 
+	split := strings.Split(h.Listen, ":")
+	if len(split) != 2 {
+		panic("err")
+	}
 	s := &http.Server{
-		Addr:    h.Listen,
+		Addr:    "0.0.0.0:" + split[1],
 		Handler: h,
 	}
 
@@ -150,7 +155,15 @@ func (h *Webhook) Poll(b *Bot, dest chan Update, stop chan struct{}) {
 	}(stop)
 
 	if h.TLS != nil {
-		s.ListenAndServeTLS(h.TLS.Cert, h.TLS.Key)
+		ln, err := net.Listen("tcp4", s.Addr)
+		if err != nil {
+			panic(err)
+		}
+		defer ln.Close()
+		err = s.ServeTLS(ln, h.TLS.Cert, h.TLS.Key)
+		if err != nil {
+			panic(err)
+		}
 	} else {
 		s.ListenAndServe()
 	}
