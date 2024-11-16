@@ -132,7 +132,7 @@ func (b *Bot) Ban(chat *Chat, member *ChatMember, revokeMessages ...bool) error 
 		params["revoke_messages"] = strconv.FormatBool(revokeMessages[0])
 	}
 
-	_, err := b.Raw("kickChatMember", params)
+	_, err := b.Raw("banChatMember", params)
 	return err
 }
 
